@@ -1,14 +1,16 @@
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, moment, normalizePath, TAbstractFile, FileSystemAdapter, ListedFiles, TFile } from 'obsidian';
 import * as Path from 'path';
 
+// 自定义的插件设置
 interface CustomAttachmentLocationSettings {
-    attachmentFolderPath: string;
+    attachmentFolderPath: string;  // 附件文件夹位置
     pastedImageFileName: string;
     dateTimeFormat: string;
     autoRenameFolder: boolean;
     autoRenameFiles: boolean;
 }
 
+// 默认的插件设置
 const DEFAULT_SETTINGS: CustomAttachmentLocationSettings = {
     attachmentFolderPath: './assets/${filename}',
     pastedImageFileName: 'image-${date}',
@@ -17,6 +19,7 @@ const DEFAULT_SETTINGS: CustomAttachmentLocationSettings = {
     autoRenameFiles: false
 }
 
+// 用于备份初始的设置数据
 let originalSettings = {
     attachmentFolderPath: ''
 };
@@ -31,6 +34,7 @@ const blobToArrayBuffer = (blob: Blob) => {
 
 
 class TemplateString extends String {
+    // 将字符串中的names替换为vals
     interpolate(params: Object) {
         const names = Object.keys(params);
         const vals = Object.values(params);
@@ -41,7 +45,7 @@ class TemplateString extends String {
 
 export default class CustomAttachmentLocation extends Plugin {
     settings: CustomAttachmentLocationSettings;
-    useRelativePath: boolean = false;
+    useRelativePath: boolean = false;  // 表明附件文件夹是否是相对于当前的路径
     adapter: FileSystemAdapter;
 
     async onload() {
@@ -51,6 +55,7 @@ export default class CustomAttachmentLocation extends Plugin {
         await this.loadSettings();
         this.backupConfigs();
 
+        // 添加自己的设置页
         this.addSettingTab(new CustomAttachmentLocationSettingTab(this.app, this));
         /*
             bind this pointer to handlePaste
@@ -70,6 +75,7 @@ export default class CustomAttachmentLocation extends Plugin {
         this.restoreConfigs();
     }
 
+    // 加载设置的数据
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
         if (this.settings.attachmentFolderPath.startsWith('./'))
@@ -78,15 +84,18 @@ export default class CustomAttachmentLocation extends Plugin {
             this.useRelativePath = false;
     }
 
+    // 保存设置数据
     async saveSettings() {
         await this.saveData(this.settings);
     }
 
+    // 备份原始的附件文件夹设置数据
     backupConfigs() {
         //@ts-ignore
         originalSettings.attachmentFolderPath = this.app.vault.getConfig('attachmentFolderPath');
     }
 
+    // 用于卸载本插件时，还原初始的设置
     restoreConfigs() {
         //@ts-ignore
         this.app.vault.setConfig('attachmentFolderPath', originalSettings.attachmentFolderPath);
@@ -97,6 +106,7 @@ export default class CustomAttachmentLocation extends Plugin {
         this.app.vault.setConfig('attachmentFolderPath', path);
     }
 
+    // 根据mdFileName获取当前的实际附件文件夹路径
     getAttachmentFolderPath(mdFileName: string) {
         let path = new TemplateString(this.settings.attachmentFolderPath).interpolate({
             filename: mdFileName
@@ -104,6 +114,7 @@ export default class CustomAttachmentLocation extends Plugin {
         return path;
     }
 
+    // 获取当前的实际附件文件夹路径，绝对路径
     getAttachmentFolderFullPath(mdFolderPath: string, mdFileName: string) {
         let attachmentFolder = '';
 
@@ -115,6 +126,7 @@ export default class CustomAttachmentLocation extends Plugin {
         return normalizePath(attachmentFolder);
     }
 
+    // 粘贴图片时，获取要修改为的文件名
     getPastedImageFileName(mdFileName: string) {
         let datetime = moment().format(this.settings.dateTimeFormat);
         let name = new TemplateString(this.settings.pastedImageFileName).interpolate({
@@ -298,6 +310,7 @@ export default class CustomAttachmentLocation extends Plugin {
     }
 }
 
+// 设置界面
 class CustomAttachmentLocationSettingTab extends PluginSettingTab {
     plugin: CustomAttachmentLocation;
 
