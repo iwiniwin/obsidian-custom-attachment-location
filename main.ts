@@ -359,7 +359,7 @@ export default class CustomAttachmentLocation extends Plugin {
         let mdFolderPath: string = Path.dirname(activeFile.path);
         let path = this.getAttachmentFolderFullPath(mdFolderPath, mdFileName, mdFilePath);
         let fullPath = this.adapter.getFullPath(normalizePath(path));
-        if(! await this.adapter.exists(fullPath)) {
+        if(! await this.adapter.exists(path)) {
             new Notice("The folder does not exist");
             return;
         }
