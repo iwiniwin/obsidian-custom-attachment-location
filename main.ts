@@ -1,5 +1,6 @@
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, moment, normalizePath, TAbstractFile, FileSystemAdapter, ListedFiles, TFile } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, moment, normalizePath, TAbstractFile, FileSystemAdapter, ListedFiles, TFile, hexToArrayBuffer, arrayBufferToHex, arrayBufferToBase64 } from 'obsidian';
 import * as Path from 'path';
+import { Md5 } from './md5/md5';
 
 // 自定义的插件设置
 interface CustomAttachmentLocationSettings {
@@ -32,7 +33,6 @@ const blobToArrayBuffer = (blob: Blob) => {
     })
 }
 
-
 class TemplateString extends String {
     // 将字符串中的names替换为vals
     interpolate(params: Object) {
@@ -40,6 +40,14 @@ class TemplateString extends String {
         const vals = Object.values(params);
         return new Function(...names, `return \`${this}\`;`)(...vals);
     }
+}
+
+const strToArrayBuffer = (str: string) => {
+    var array = new Uint8Array(str.length);
+    for(var i = 0; i < str.length; i++) {
+        array[i] = str.charCodeAt(i);
+    }
+    return array.buffer
 }
 
 
@@ -107,21 +115,23 @@ export default class CustomAttachmentLocation extends Plugin {
     }
 
     // 根据mdFileName获取当前的实际附件文件夹路径
-    getAttachmentFolderPath(mdFileName: string) {
+    getAttachmentFolderPath(mdFileName: string, mdFilePath: string) {
+        let md5 = Md5.hashStr(mdFilePath);
         let path = new TemplateString(this.settings.attachmentFolderPath).interpolate({
-            filename: mdFileName
+            filename: mdFileName,
+            filepathmd5: md5,
         });
         return path;
     }
 
     // 获取当前的实际附件文件夹路径，绝对路径
-    getAttachmentFolderFullPath(mdFolderPath: string, mdFileName: string) {
+    getAttachmentFolderFullPath(mdFolderPath: string, mdFileName: string, mdFilePath: string) {
         let attachmentFolder = '';
 
         if (this.useRelativePath)
-            attachmentFolder = Path.join(mdFolderPath, this.getAttachmentFolderPath(mdFileName));
+            attachmentFolder = Path.join(mdFolderPath, this.getAttachmentFolderPath(mdFileName, mdFilePath));
         else {
-            attachmentFolder = this.getAttachmentFolderPath(mdFileName);
+            attachmentFolder = this.getAttachmentFolderPath(mdFileName, mdFilePath);
         }
         return normalizePath(attachmentFolder);
     }
@@ -136,15 +146,16 @@ export default class CustomAttachmentLocation extends Plugin {
         return name;
     }
 
-
+    // 粘贴文件时触发的操作
     async handlePaste(event: ClipboardEvent, editor: Editor, view: MarkdownView) {
         console.log('Handle Paste');
 
         let mdFileName = view.file.basename;
+        let mdFilePath = view.file.path;
         let mdFolderPath: string = Path.dirname(view.file.path);
 
-        let path = this.getAttachmentFolderPath(mdFileName);
-        let fullPath = this.getAttachmentFolderFullPath(mdFolderPath, mdFileName);
+        let path = this.getAttachmentFolderPath(mdFileName, mdFilePath);
+        let fullPath = this.getAttachmentFolderFullPath(mdFolderPath, mdFileName, mdFilePath);
 
         /* 
         sample
@@ -201,10 +212,11 @@ export default class CustomAttachmentLocation extends Plugin {
         console.log('Handle Drop');
 
         let mdFileName = view.file.basename;
+        let mdFilePath = view.file.path;
         let mdFolderPath: string = Path.dirname(view.file.path);
 
-        let path = this.getAttachmentFolderPath(mdFileName);
-        let fullPath = this.getAttachmentFolderFullPath(mdFolderPath, mdFileName);
+        let path = this.getAttachmentFolderPath(mdFileName, mdFilePath);
+        let fullPath = this.getAttachmentFolderFullPath(mdFolderPath, mdFileName, mdFilePath);
 
         if (!this.useRelativePath && !await this.adapter.exists(fullPath))
             await this.app.vault.createFolder(fullPath);
@@ -224,8 +236,9 @@ export default class CustomAttachmentLocation extends Plugin {
             return;
 
         let mdFileName = file.basename;
+        let mdFilePath = file.path;
 
-        let path = this.getAttachmentFolderPath(mdFileName);
+        let path = this.getAttachmentFolderPath(mdFileName, mdFilePath);
 
         this.updateAttachmentFolderConfig(path);
     }
@@ -237,8 +250,9 @@ export default class CustomAttachmentLocation extends Plugin {
             return;
 
         let newName = newFile.basename;
+        let newPath = newFile.path;
 
-        this.updateAttachmentFolderConfig(this.getAttachmentFolderPath(newName));
+        this.updateAttachmentFolderConfig(this.getAttachmentFolderPath(newName, newPath));
 
         if (!this.settings.autoRenameFolder) {
             return;
@@ -248,8 +262,8 @@ export default class CustomAttachmentLocation extends Plugin {
 
         let mdFolderPath: string = Path.dirname(newFile.path);
         let oldMdFolderPath: string = Path.dirname(oldFilePath);
-        let oldAttachmentFolderPath: string = this.getAttachmentFolderFullPath(oldMdFolderPath, oldName);
-        let newAttachmentFolderPath: string = this.getAttachmentFolderFullPath(mdFolderPath, newName);
+        let oldAttachmentFolderPath: string = this.getAttachmentFolderFullPath(oldMdFolderPath, oldName, oldFilePath);
+        let newAttachmentFolderPath: string = this.getAttachmentFolderFullPath(mdFolderPath, newName, newPath);
 
         //check if old attachment folder exists and is necessary to rename Folder
         if (await this.adapter.exists(oldAttachmentFolderPath) && (oldAttachmentFolderPath !== newAttachmentFolderPath)) {
