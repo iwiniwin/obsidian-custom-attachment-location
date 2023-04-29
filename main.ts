@@ -1,6 +1,7 @@
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, moment, normalizePath, TAbstractFile, FileSystemAdapter, ListedFiles, TFile, Notice } from 'obsidian';
 import * as Path from 'path';
 import { Md5 } from './md5/md5';
+const { shell } = require('electron');
 
 // 自定义的插件设置
 interface CustomAttachmentLocationSettings {
@@ -80,11 +81,11 @@ export default class CustomAttachmentLocation extends Plugin {
             name: 'Copy Attachment Folder Name',
             callback: () => this.copyAttachmentFolderName(),
         });
-        // this.addCommand({
-        //     id: 'open-attachment-folder-in-explorer',
-        //     name: 'Open Attachment Folder In Explorer',
-        //     callback: () => this.openAttachmentFolderInExplorer(),
-        // });
+        this.addCommand({
+            id: 'open-attachment-folder-in-explorer',
+            name: 'Open Attachment Folder In Explorer',
+            callback: () => this.openAttachmentFolderInExplorer(),
+        });
     }
 
     onunload() {
@@ -346,7 +347,19 @@ export default class CustomAttachmentLocation extends Plugin {
     };
 
     openAttachmentFolderInExplorer = async () => {
-        
+
+        const activeFile = this.app.workspace.getActiveFile();
+
+      // The last open file is closed, no currently open files
+        if (!activeFile) {
+            return;
+        }
+        let mdFileName = activeFile.basename;
+        let mdFilePath = activeFile.path;
+        let mdFolderPath: string = Path.dirname(activeFile.path);
+        let path = this.getAttachmentFolderFullPath(mdFolderPath, mdFileName, mdFilePath);
+        let fullPath = this.adapter.getFullPath(normalizePath(path));
+        shell.openPath(fullPath);
     };
 }
 
