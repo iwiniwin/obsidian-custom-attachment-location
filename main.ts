@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, moment, normalizePath, TAbstractFile, FileSystemAdapter, ListedFiles, TFile, hexToArrayBuffer, arrayBufferToHex, arrayBufferToBase64 } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, moment, normalizePath, TAbstractFile, FileSystemAdapter, ListedFiles, TFile, Notice } from 'obsidian';
 import * as Path from 'path';
 import { Md5 } from './md5/md5';
 
@@ -75,7 +75,16 @@ export default class CustomAttachmentLocation extends Plugin {
 
         this.registerEvent(this.app.vault.on('rename', this.handleRename.bind(this)));
 
-
+        this.addCommand({
+            id: 'copy-attachment-folder-name',
+            name: 'Copy Attachment Folder Name',
+            callback: () => this.copyAttachmentFolderName(),
+        });
+        // this.addCommand({
+        //     id: 'open-attachment-folder-in-explorer',
+        //     name: 'Open Attachment Folder In Explorer',
+        //     callback: () => this.openAttachmentFolderInExplorer(),
+        // });
     }
 
     onunload() {
@@ -322,6 +331,23 @@ export default class CustomAttachmentLocation extends Plugin {
                 continue;
         }
     }
+
+    copyAttachmentFolderName = async () => {
+        const activeFile = this.app.workspace.getActiveFile();
+
+      // The last open file is closed, no currently open files
+        if (!activeFile) {
+            return;
+        }
+        let md5 = Md5.hashStr(activeFile.path);
+        navigator.clipboard.writeText(md5).then(() => {
+            new Notice("Copied " + md5);
+        });
+    };
+
+    openAttachmentFolderInExplorer = async () => {
+        
+    };
 }
 
 // 设置界面
