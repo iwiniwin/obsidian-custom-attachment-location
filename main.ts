@@ -86,6 +86,11 @@ export default class CustomAttachmentLocation extends Plugin {
             name: 'Open Attachment Folder In Explorer',
             callback: () => this.openAttachmentFolderInExplorer(),
         });
+        this.addCommand({
+            id: 'collect-images-to-self-attachment-folder',
+            name: 'Collect Images To Self Attachment Folder',
+            editorCallback: (editor, view) => this.collectImagesToSelfAttachmentFolder(editor, view),
+        });
     }
 
     onunload() {
@@ -350,7 +355,7 @@ export default class CustomAttachmentLocation extends Plugin {
 
         const activeFile = this.app.workspace.getActiveFile();
 
-      // The last open file is closed, no currently open files
+        // The last open file is closed, no currently open files
         if (!activeFile) {
             return;
         }
@@ -364,6 +369,52 @@ export default class CustomAttachmentLocation extends Plugin {
             return;
         }
         shell.openPath(fullPath);
+    };
+
+    collectImagesToSelfAttachmentFolder = async (editor: Editor, view: MarkdownView) => {
+
+        if (!view) {
+            return;
+        }
+
+        let mdFileName = view.file.basename;
+        let mdFilePath = view.file.path;
+        let mdFolderPath: string = Path.dirname(view.file.path);
+
+        let fullPath = this.getAttachmentFolderFullPath(mdFolderPath, mdFileName, mdFilePath);
+
+        let embeds = view.app.metadataCache.getCache(view.file.path)?.embeds;
+        if (!embeds)
+            return;
+
+        let count = 0;
+        let value = editor.getValue();
+
+        for (let embed of embeds) {
+            let link = embed.link;
+            if (link.endsWith('.png') || link.endsWith('jpeg')) {
+                let name = Path.basename(link);
+                let dir = Path.dirname(link);
+                if(dir !== fullPath) {
+                    if(!await this.adapter.exists(fullPath)) {
+                        await this.adapter.mkdir(fullPath);
+                    }
+                    let newPath = normalizePath(Path.join(fullPath, name));
+                    if(!await this.adapter.exists(newPath)) {
+                        await this.adapter.copy(link, newPath);
+                    }
+                    value = value.replace(link, newPath);
+                    count ++;
+                }
+            }
+        }
+
+        if(count > 0) {
+            editor.setValue(value);
+            new Notice("Collect " + count + " images");
+        } else {
+            new Notice("There is nothing to collect");
+        }
     };
 }
 
