@@ -72,7 +72,7 @@ export default class CustomAttachmentLocation extends Plugin {
         */
         this.registerEvent(this.app.workspace.on('editor-paste', this.handlePaste.bind(this)));
         this.registerEvent(this.app.workspace.on('editor-drop', this.handleDrop.bind(this)));
-        this.registerEvent(this.app.workspace.on('file-open', this.handleFileOpen.bind(this)));
+        // this.registerEvent(this.app.workspace.on('file-open', this.handleFileOpen.bind(this)));
 
         this.registerEvent(this.app.vault.on('rename', this.handleRename.bind(this)));
 
