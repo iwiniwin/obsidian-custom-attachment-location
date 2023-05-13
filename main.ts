@@ -71,7 +71,7 @@ export default class CustomAttachmentLocation extends Plugin {
             this.registerEvent(this.app.workspace.on('editor-paste', this.handlePaste));
         */
         this.registerEvent(this.app.workspace.on('editor-paste', this.handlePaste.bind(this)));
-        this.registerEvent(this.app.workspace.on('editor-drop', this.handleDrop.bind(this)));
+        // this.registerEvent(this.app.workspace.on('editor-drop', this.handleDrop.bind(this)));
         this.registerEvent(this.app.workspace.on('file-open', this.handleFileOpen.bind(this)));
 
         this.registerEvent(this.app.vault.on('rename', this.handleRename.bind(this)));
@@ -240,22 +240,25 @@ export default class CustomAttachmentLocation extends Plugin {
     }
 
     async handleFileOpen(file: TFile | null) {
+        console.log('Handle File Open');
+
         if (file == null) {
             console.log("No file open");
             return;
         }
-        if (file.name == null) {
-            return;
-        }
 
-        // 仅在打开excalidraw文件时更新附件文件夹路径
-        if (!file.name.endsWith(".excalidraw.md"))
+        if (file.extension !== 'md')
             return;
 
         let mdFileName = file.basename;
         let mdFilePath = file.path;
+        let mdFolderPath: string = Path.dirname(file.path);
 
         let path = this.getAttachmentFolderPath(mdFileName, mdFilePath);
+        let fullPath = this.getAttachmentFolderFullPath(mdFolderPath, mdFileName, mdFilePath);
+
+        if (!this.useRelativePath && !await this.adapter.exists(fullPath))
+            await this.app.vault.createFolder(fullPath);
 
         this.updateAttachmentFolderConfig(path);
     }
