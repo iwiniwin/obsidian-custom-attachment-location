@@ -121,12 +121,19 @@ export default class CustomAttachmentLocation extends Plugin {
     // 用于卸载本插件时，还原初始的设置
     restoreConfigs() {
         //@ts-ignore
-        this.app.vault.setConfig('attachmentFolderPath', originalSettings.attachmentFolderPath);
+        this.setAttachmentFolderPath(originalSettings.attachmentFolderPath);
     }
 
     updateAttachmentFolderConfig(path: string) {
+        this.setAttachmentFolderPath(path);
+    }
+
+    setAttachmentFolderPath(path: string) {
         //@ts-ignore
-        this.app.vault.setConfig('attachmentFolderPath', path);
+        // this.app.vault.setConfig('attachmentFolderPath', path);
+        // 不再保存修改的路径到文件，避免重复提交
+        //@ts-ignore
+        this.app.vault.config.attachmentFolderPath = path;
     }
 
     // 根据mdFileName获取当前的实际附件文件夹路径
@@ -172,10 +179,6 @@ export default class CustomAttachmentLocation extends Plugin {
         let path = this.getAttachmentFolderPath(mdFileName, mdFilePath);
         let fullPath = this.getAttachmentFolderFullPath(mdFolderPath, mdFileName, mdFilePath);
 
-        /* 
-        sample
-        this.app.vault.setConfig('attachmentFolderPath', `./assets/${filename}`);
-        */
         this.updateAttachmentFolderConfig(path);
 
         let clipBoardData = event.clipboardData;
