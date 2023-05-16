@@ -1,6 +1,7 @@
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, moment, normalizePath, TAbstractFile, FileSystemAdapter, ListedFiles, TFile, Notice } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, moment, normalizePath, TAbstractFile, FileSystemAdapter, ListedFiles, TFile, Notice, Vault } from 'obsidian';
 import * as Path from 'path';
 import { Md5 } from './md5/md5';
+import { around } from "monkey-around";
 const { shell } = require('electron');
 
 // 自定义的插件设置
@@ -66,6 +67,25 @@ export default class CustomAttachmentLocation extends Plugin {
 
         // 添加自己的设置页
         this.addSettingTab(new CustomAttachmentLocationSettingTab(this.app, this));
+
+        // 避免attachmentFolderPath被频繁修改
+        this.register(
+            //@ts-ignore
+            around(Vault.prototype, {
+                //@ts-ignore
+                writeConfigJson(old: any) {
+					return function (name: string, config: any) {
+                        if(name === "app") {
+                            if(config != null && config.attachmentFolderPath != null) {
+                                config.attachmentFolderPath = "controlledByCustomAttachmentLocation"
+                            }
+                        }
+                        return old.call(this, name, config);
+                    }
+                }
+            })
+        );
+
         /*
             bind this pointer to handlePaste
             this.registerEvent(this.app.workspace.on('editor-paste', this.handlePaste));
